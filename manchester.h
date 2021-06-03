@@ -5,7 +5,7 @@
 
 #define MAN_0 (uint32)0x2
 #define MAN_1 (uint32)0x1
-#define STOPBIT (uint32) 0x5
+#define STOPBIT (uint32) 0x2
 
 #ifndef UC
 #include <assert.h>

@@ -31,7 +31,7 @@ volatile uint32 manen_result;
 ISR(TIMER1_COMPA_vect)
 {
 	PORTB ^= (1 << PINB1);
-	if(interruptDatabits & interruptSendeMaske)
+	if((interruptDatabits & interruptSendeMaske) || flag_activeGapTime)
 	{
 		PORTB |=  (1 << PINB0);
 	}
@@ -43,10 +43,13 @@ ISR(TIMER1_COMPA_vect)
 	sentBitCounter++;
 	if(sentBitCounter > 24)
 	{
-		flag_caluclateNewValues = true;
 		flag_activeGapTime = true;
 		interruptDatabits = manen_result;
 		interruptSendeMaske = 0x1;
+	}
+	if (flag_activeGapTime)
+	{
+		flag_caluclateNewValues = true;
 		sentBitCounter = 0;
 		TIMSK1 &= ~(1 << OCIE1A);
 	}
@@ -58,9 +61,19 @@ ISR(TIMER1_COMPB_vect)
 	PORTB &= ~(1 << PINB0);
 	DDRB &= 0x00;
 	stop_timer1();
+	
+	if (!(PINB &(1 << PINB0)))
+	{
+		//hängt der Empfänger dran?
+		init_timer1(1270, 1270 * 8);
+		start_timer1();
+		flag_activeGapTime = false;
+		DDRB |= 0xff;
+	}
 }
 
 /*Empfangs Interrupts*/
+// Wird PC-Int verwendet PINB0
 ISR(INT0_vect)
 {
 	TCNT3 = 0;
@@ -107,13 +120,16 @@ int main()
 	uint16 crcen_result = create_crc4(0x00);
 	manen_result = man_encode16(crcen_result, 11);
 	manen_result |= (STOPBIT << 22);
+	manen_result <<= 1; //startbit
 	interruptDatabits = manen_result;
 	
 	init_timer1(1270, 1270 * 8);
 	start_timer1();
+	//init_timer3(1270 * 6, 635, 1905);	//1270/2=635, 635+1270=1905
+	//mein shitty code
 	while(true)
 	{
-		
+						
 	}
 	return EXIT_SUCCESS;
 }
