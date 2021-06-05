@@ -20,8 +20,6 @@ uint16 create_crc4(uint8 num)
 	{
 		if (rest & 0x8)
 		rest ^= CRC4_POLYNOM;
-		if (i > 5)
-		continue;
 		if (i <= 3)
 		{
 			rest <<= 1;
@@ -57,8 +55,6 @@ bool  check_crc4(uint16 num)
 	{
 		if (rest & 0x8)
 		rest ^= CRC4_POLYNOM;
-		if (i > 5)
-		continue;
 		if (i <= 3)
 		{
 			rest <<= 1;

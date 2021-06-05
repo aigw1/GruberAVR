@@ -2,10 +2,11 @@
 #define MANCHESTER_H_INCLUDED
 
 #include "typedefs.h"
+#include "crc4.h"
 
 #define MAN_0 (uint32)0x2
 #define MAN_1 (uint32)0x1
-#define STOPBIT (uint32) 0x2
+#define STOPBIT (uint32) 0x1
 
 #ifndef UC
 #include <assert.h>
@@ -152,6 +153,15 @@ uint32 man_decode64(uint64 Di, uint8 bitConvertNum)
 		Maske = Maske << 2;
 	}
 	return Do;
+}
+
+uint32 create_code(uint8 value)
+{
+	uint16 crcen_result = create_crc4(value);
+	uint32 manen_result = man_encode16(crcen_result, 11);
+	manen_result |= (STOPBIT << 22);
+	manen_result <<= 1; //start bit
+	return manen_result;
 }
 
 #endif

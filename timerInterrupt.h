@@ -1,15 +1,7 @@
-/*
- * timerInterrupt.h
- *
- * Created: 23.04.2021 09:48:02
- *  Author: wolfg
- */ 
-
-
 #ifndef TIMERINTERRUPT_H_INCLUDED
 #define TIMERINTERRUPT_H_INCLUDED
 
-void init_timer1(uint16 OCRA, uint16 OCRB)
+void init_timer1(uint16 OCRA, uint16 OCRB, uint16 OCRC)
 {
 	/*Timer mode: Normal*/
 	TCCR1A &= ~(1 << WGM10);
@@ -18,18 +10,23 @@ void init_timer1(uint16 OCRA, uint16 OCRB)
 	TCCR1B &= ~(1 << WGM13);
 	
 	/*Prescaler 1:1*/
-	//TCCR1B |=  (1 << CS10);
-	//TCCR1B &= ~(1 << CS11);
-	//TCCR1B &= ~(1 << CS12);
+	#ifndef DEBUG
+	TCCR1B |=  (1 << CS10);
+	TCCR1B &= ~(1 << CS11);
+	TCCR1B &= ~(1 << CS12);
+	#endif
 	
 	/*Compare value*/
 	OCR1A = OCRA;
 	OCR1B = OCRB;
+	OCR1C = OCRC;
 	
 	/*Debug Prescaler 1:1024*/
+	#ifdef DEBUG
 	TCCR1B |=  (1 << CS10);
 	TCCR1B &= ~(1 << CS11);
 	TCCR1B |=  (1 << CS12);
+	#endif
 }
 
 void init_timer3(uint16 OCRA, uint16 OCRB, uint16 OCRC)
@@ -41,9 +38,11 @@ void init_timer3(uint16 OCRA, uint16 OCRB, uint16 OCRC)
 	TCCR3B &= ~(1 << WGM33);
 	
 	/*Prescaler 1:1*/
-	//TCCR3B |=  (1 << CS30);
-	//TCCR3B &= ~(1 << CS31);
-	//TCCR3B &= ~(1 << CS32);
+	#ifndef DEBUG
+	TCCR3B |=  (1 << CS30);
+	TCCR3B &= ~(1 << CS31);
+	TCCR3B &= ~(1 << CS32);
+	#endif
 	
 	/*Compare value*/
 	OCR3A = OCRA;
@@ -51,37 +50,57 @@ void init_timer3(uint16 OCRA, uint16 OCRB, uint16 OCRC)
 	OCR3C = OCRC;
 	
 	/*Debug Prescaler 1:1024*/
+	#ifdef DEBUG
 	TCCR3B |=  (1 << CS30);
 	TCCR3B &= ~(1 << CS31);
 	TCCR3B |=  (1 << CS32);
+	#endif
 }
 
 void start_timer1()
 {
 	TCNT1 = 0;
+	#ifndef DEBUG
 	TCCR1B |=  (1 << CS10);
 	TCCR1B &= ~(1 << CS11);
 	TCCR1B &= ~(1 << CS12);
+	#else
+	TCCR1B |=  (1 << CS10);
+	TCCR1B &= ~(1 << CS11);
+	TCCR1B |=  (1 << CS12);
+	#endif
 	TIMSK1 |= (1 << OCIE1A);
 	TIMSK1 |= (1 << OCIE1B);
+	TIMSK1 |= (1 << OCIE1C);
 }
 
 void start_timer3()
 {
 	TCNT3 = 0;
+	#ifndef DEBUG
 	TCCR3B |=  (1 << CS30);
 	TCCR3B &= ~(1 << CS31);
 	TCCR3B &= ~(1 << CS32);
+	#else
+	TCCR3B |=  (1 << CS30);
+	TCCR3B &= ~(1 << CS31);
+	TCCR3B |=  (1 << CS32);
+	#endif
 	TIMSK3 |=  (1 << OCIE3A);
 	TIMSK3 |=  (1 << OCIE3B);
+	TIMSK3 |=  (1 << OCIE3C);
 }
 
 void stop_timer1()
 {
+
 	TCCR1B &= ~(1 << CS10);
 	TCCR1B &= ~(1 << CS11);
 	TCCR1B &= ~(1 << CS12);
 	TIMSK1 &= ~(1 << OCIE1A);
+	TIMSK1 &= ~(1 << OCIE1B);
+	TIMSK1 &= ~(1 << OCIE1C);
+	TCNT1 = 0;
 }
 
 void stop_timer3()
@@ -90,6 +109,9 @@ void stop_timer3()
 	TCCR3B &= ~(1 << CS31);
 	TCCR3B &= ~(1 << CS32);
 	TIMSK3 &= ~(1 << OCIE3A);
+	TIMSK3 &= ~(1 << OCIE3B);
+	TIMSK3 &= ~(1 << OCIE3C);
+	TCNT3 = 0;
 }
 
 #endif /* TIMERINTERRUPT_H_INCLUDED */
