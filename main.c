@@ -13,7 +13,6 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
-#include "binOutput.h"
 #include "manchester.h"
 #include "typedefs.h"
 #include "timerInterrupt.h"
