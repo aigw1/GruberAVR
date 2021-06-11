@@ -8,10 +8,10 @@ void init_timer1(uint16 OCRA, uint16 OCRB, uint16 OCRC)
 	TCCR1B &= ~(1 << WGM12);
 	TCCR1B &= ~(1 << WGM13);
 	
-	/*Prescaler 1:1*/
+	/*Prescaler 1:8*/
 	#ifndef DEBUG
-	TCCR1B |=  (1 << CS10);
-	TCCR1B &= ~(1 << CS11);
+	TCCR1B &= ~(1 << CS10);
+	TCCR1B |=  (1 << CS11);
 	TCCR1B &= ~(1 << CS12);
 	#endif
 	
@@ -27,7 +27,6 @@ void init_timer1(uint16 OCRA, uint16 OCRB, uint16 OCRC)
 	TCCR1B |=  (1 << CS12);
 	#endif
 }
-
 void init_timer3(uint16 OCRA, uint16 OCRB, uint16 OCRC)
 {
 	/*Timer mode: Normal*/
@@ -36,10 +35,10 @@ void init_timer3(uint16 OCRA, uint16 OCRB, uint16 OCRC)
 	TCCR3B &= ~(1 << WGM32);
 	TCCR3B &= ~(1 << WGM33);
 	
-	/*Prescaler 1:1*/
+	/*Prescaler 1:8*/
 	#ifndef DEBUG
-	TCCR3B |=  (1 << CS30);
-	TCCR3B &= ~(1 << CS31);
+	TCCR3B &= ~(1 << CS30);
+	TCCR3B |=  (1 << CS31);
 	TCCR3B &= ~(1 << CS32);
 	#endif
 	
@@ -58,10 +57,45 @@ void init_timer3(uint16 OCRA, uint16 OCRB, uint16 OCRC)
 
 void start_timer1(void)
 {
-	TCNT1 = 0;
+	/*Prescaler 1:8*/
 	#ifndef DEBUG
+	TCCR1B &= ~(1 << CS10);
+	TCCR1B |=  (1 << CS11);
+	TCCR1B &= ~(1 << CS12);
+	#endif
+	
+	/*Debug Prescaler 1:1024*/
+	#ifdef DEBUG
 	TCCR1B |=  (1 << CS10);
 	TCCR1B &= ~(1 << CS11);
+	TCCR1B |=  (1 << CS12);
+	#endif
+	TCNT1 = 0;
+}
+void start_timer3(void)
+{
+	/*Prescaler 1:8*/
+	#ifndef DEBUG
+	TCCR3B &= ~(1 << CS30);
+	TCCR3B |=  (1 << CS31);
+	TCCR3B &= ~(1 << CS32);
+	#endif
+	
+	/*Debug Prescaler 1:1024*/
+	#ifdef DEBUG
+	TCCR3B |=  (1 << CS30);
+	TCCR3B &= ~(1 << CS31);
+	TCCR3B |=  (1 << CS32);
+	#endif
+	TCNT3 = 0;
+}
+void start_timer1_interrupt(void)
+{
+	TCNT1 = 0;
+	/*Prescaler 1:8*/
+	#ifndef DEBUG
+	TCCR1B &= ~(1 << CS10);
+	TCCR1B |=  (1 << CS11);
 	TCCR1B &= ~(1 << CS12);
 	#else
 	TCCR1B |=  (1 << CS10);
@@ -72,13 +106,12 @@ void start_timer1(void)
 	TIMSK1 |= (1 << OCIE1B);
 	TIMSK1 |= (1 << OCIE1C);
 }
-
-void start_timer3(void)
+void start_timer3_interrupt(void)
 {
 	TCNT3 = 0;
 	#ifndef DEBUG
-	TCCR3B |=  (1 << CS30);
-	TCCR3B &= ~(1 << CS31);
+	TCCR3B &= ~(1 << CS30);
+	TCCR3B |=  (1 << CS31);
 	TCCR3B &= ~(1 << CS32);
 	#else
 	TCCR3B |=  (1 << CS30);
@@ -92,7 +125,20 @@ void start_timer3(void)
 
 void stop_timer1(void)
 {
-
+	TCCR1B &= ~(1 << CS10);
+	TCCR1B &= ~(1 << CS11);
+	TCCR1B &= ~(1 << CS12);	
+	TCNT1 = 0;
+}
+void stop_timer3(void)
+{
+	TCCR3B &= ~(1 << CS30);
+	TCCR3B &= ~(1 << CS31);
+	TCCR3B &= ~(1 << CS32);
+	TCNT3 = 0;
+}
+void stop_timer1_interrupt(void)
+{
 	TCCR1B &= ~(1 << CS10);
 	TCCR1B &= ~(1 << CS11);
 	TCCR1B &= ~(1 << CS12);
@@ -101,8 +147,7 @@ void stop_timer1(void)
 	TIMSK1 &= ~(1 << OCIE1C);
 	TCNT1 = 0;
 }
-
-void stop_timer3(void)
+void stop_timer3_interrupt(void)
 {
 	TCCR3B &= ~(1 << CS30);
 	TCCR3B &= ~(1 << CS31);

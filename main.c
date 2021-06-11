@@ -27,72 +27,98 @@ volatile uint8  receivedBitCounter = 0;
 volatile bool   flag_caluclateNewValues = false;
 volatile bool   flag_activeGapTime = false;
 volatile bool   flag_frameRecieved = false;
-volatile bool   flag_firstPinChange = true;
+volatile bool   flag_firstPinChange = false;
+
+volatile bool   flag_sending = true;
+volatile bool   flag_receiving = false;
+volatile bool   flag_6BitDelay = true;
+volatile bool   flag_vaildPinChange = false;
 
 volatile uint32 manen_result;
+
 /*Sende Interrupts*/
 ISR(TIMER1_COMPA_vect)
 {
-	PORTB ^= (1 << PINB1);
-	if((interruptDatabits & interruptSendeMaske) || flag_activeGapTime)
-	{
-		PORTB |=  (1 << PINB0);
-	}
-	else
-	{
-		PORTB &= ~(1 << PINB0);
-	}
-	interruptSendeMaske <<= 1;
-	sentBitCounter++;
 	if (flag_activeGapTime)
 	{
 		flag_caluclateNewValues = true;
 		sentBitCounter = 0;
 		interruptDatabits = manen_result;
 		interruptSendeMaske = 0x1;
-		TIMSK1 &= ~(1 << OCIE1A);
 	}
-	if(sentBitCounter > 24)
+	if(flag_activeGapTime)
 	{
-		flag_activeGapTime = true;
+		PORTB |= (1 << PINB0);
 	}
-	TCNT1 = 0;
+	if(flag_sending && flag_6BitDelay && !flag_activeGapTime)
+	{
+		if(interruptDatabits & interruptSendeMaske)
+		{
+			PORTB |=  (1 << PINB0);
+		}
+		else
+		{
+			PORTB &= ~(1 << PINB0);
+		}
+		interruptSendeMaske <<= 1;
+		sentBitCounter++;
+		if(sentBitCounter > 24)
+		{
+			flag_activeGapTime = true;
+		}
+		TCNT1 = 0;
+	}
 }
 
 ISR(TIMER1_COMPB_vect)
 {
-	PORTB &= ~(1 << PINB0);
-	DDRB &= 0x00;
-	stop_timer1();	
-	if (!(PINB & (1 << PINB0))) //Pin low = no host connected
+	if(flag_sending && flag_6BitDelay && flag_activeGapTime)
 	{
-		start_timer1();
-		flag_activeGapTime = false;
-		DDRB |= 0xff;
-	}
-	else //Pin high = host connected
-	{
-		enable_pinChange(0);
-		flag_firstPinChange = true;
+		PORTB &= ~(1 << PINB0);
+		DDRB &= ~(1 << PINB0);
+		if (!(PINB & (1 << PINB0))) //Pin low = no host connected
+		{
+			flag_activeGapTime = false;
+			flag_sending = true;
+			flag_receiving = false;
+			DDRB |= 0xff;
+		}
+		else //Pin high = host connected
+		{
+			flag_activeGapTime = false;
+			flag_receiving = true;
+			flag_sending = false;
+			flag_firstPinChange = true;
+			flag_6BitDelay = false;
+		}
+		TCNT1 = 0;
 	}
 }
 
 //Delay to start the sending after 6 Bits
 ISR(TIMER1_COMPC_vect)
 {
-	
+	if(flag_sending && !flag_6BitDelay)
+	{
+		flag_6BitDelay = true;
+		TCNT1 = 0;
+	}
 }
 
 /*Empfangs Interrupts*/
 // Wird PC-Int verwendet PINB0
 ISR(PCINT0_vect)
 {
-	/*First pin Change = Start bit*/
-	/*First sampled bit will be the start bit*/
-	if (flag_firstPinChange && !(PINB & (1 << PINB0))) //Pin has to be low 
+	if(flag_receiving)
 	{
-		flag_firstPinChange = false;
-		start_timer3();
+		/*First pin Change = Start bit*/
+		/*First sampled bit will be the start bit*/
+		if (flag_firstPinChange && !(PINB & (1 << PINB0))) //Pin has to be low
+		{
+			//PORTB ^= (1 << PINB1);
+			flag_firstPinChange = false;
+			flag_vaildPinChange = true;
+		}
 	}
 	TCNT3 = 0;
 }
@@ -101,56 +127,72 @@ ISR(PCINT0_vect)
 //Still has to be checked whether the connection in between is lost
 ISR(TIMER3_COMPA_vect)
 {
-	if (PINB & (1 << PINB0))
+	PORTB |= (1 << PINB0);	
+	if(flag_receiving && flag_vaildPinChange)
 	{
-		PORTB |= (1 << PINB0);
-		DDRB = 0xff;
+		if (PINB & (1 << PINB0))
+		{
+			DDRB = 0xff;
+			flag_vaildPinChange = false;
+			flag_sending = true;
+			flag_receiving = false;
+			TCNT1 = 0;
+		}
 	}
+	TCNT3 = 0;
 }
 
 ISR(TIMER3_COMPB_vect)
 {
-	if((PINB & 0x1))
-	{
-		interruptReceivedData |= 0x1;
-	}
-	interruptReceivedData <<= 1;
-	receivedBitCounter++;
-	if(receivedBitCounter > 24)
-	{
-		TIMSK3 &= ~(1 << OCIE1B);
-		TIMSK3 &= ~(1 << OCIE1C);
-		receivedBitCounter = 0;
-		flag_frameRecieved = true;
+	if(flag_receiving && !flag_frameRecieved && flag_vaildPinChange)
+	{		
+		if((PINB & 0x1))
+		{
+			interruptReceivedData |= 0x1;
+		}
+		interruptReceivedData <<= 1;
+		receivedBitCounter++;
+		if(receivedBitCounter > 24)
+		{
+			receivedBitCounter = 0;
+			flag_frameRecieved = true;
+		}
 	}
 }
 
 ISR(TIMER3_COMPC_vect)
 {
-	if((PINB & 0x1))
+	if(flag_receiving && !flag_frameRecieved && flag_vaildPinChange)
 	{
-		interruptReceivedData |= 0x1;
-	}
-	interruptReceivedData <<= 1;
-	receivedBitCounter++;
-	if(receivedBitCounter > 24)
-	{
-		TIMSK3 &= ~(1 << OCIE1B);
-		TIMSK3 &= ~(1 << OCIE1C);
-		receivedBitCounter = 0;
-		flag_frameRecieved = true;
+		if((PINB & 0x1))
+		{
+			interruptReceivedData |= 0x1;
+		}
+		interruptReceivedData <<= 1;
+		receivedBitCounter++;
+		if(receivedBitCounter > 24)
+		{
+			receivedBitCounter = 0;
+			flag_frameRecieved = true;
+		}
 	}
 }
 
 int main()
 {
+	CLKPR = 0x80;
+	CLKPR = 0x00;
+	
 	sei();
 	DDRB = 0xff;
+	PORTB |= (1 << PINB0);
 	manen_result = create_code(0x5E);
 	interruptDatabits = manen_result;
-	init_timer1(1270, 1270 * 8, 1270 * 6);
+	enable_pinChange(0);
+	init_timer1(1270, 1270 * 8, 1270 * 5);
 	init_timer3(1270 * 6, 635, 1905);	//1270/2=635, 635+1270=1905
-	start_timer1();
+	start_timer1_interrupt();
+	start_timer3_interrupt();
 	while(true)
 	{
 		if(flag_caluclateNewValues)
