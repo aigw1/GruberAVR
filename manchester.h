@@ -4,9 +4,9 @@
 #include "typedefs.h"
 #include "crc4.h"
 
-#define MAN_0 (uint32)0x2
-#define MAN_1 (uint32)0x1
-#define STOPBIT (uint32) 0x1
+#define MAN_0 (uint32)0x1
+#define MAN_1 (uint32)0x2
+#define STOPBIT (uint32)0x1
 
 #ifndef UC
 #include <assert.h>
