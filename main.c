@@ -1,5 +1,3 @@
-//TODO: Frameempfangen wurde noch nicht getestet
-
 /*When PC is defined console outputs + assertions are enabled*/
 /*When UC is defined console outputs + assertions are disabled*/
 #define UC
@@ -7,7 +5,7 @@
 #define EXIT_SUCCESS 0
 #define EXIT_FAILURE 1
 
-#define F_CPU 2000000
+#define F_CPU 16000000
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -70,6 +68,7 @@ ISR(TIMER1_COMPA_vect)
 	}
 }
 
+/*Hand bus over to the other host*/
 ISR(TIMER1_COMPB_vect)
 {
 	if(flag_sending && flag_6BitDelay && flag_activeGapTime)
@@ -95,7 +94,7 @@ ISR(TIMER1_COMPB_vect)
 	}
 }
 
-//Delay to start the sending after 6 Bits
+/*Delay to start the sending after 6 Bits*/
 ISR(TIMER1_COMPC_vect)
 {
 	if(flag_sending && !flag_6BitDelay)
@@ -106,7 +105,6 @@ ISR(TIMER1_COMPC_vect)
 }
 
 /*Empfangs Interrupts*/
-// Wird PC-Int verwendet PINB0
 ISR(PCINT0_vect)
 {
 	if(flag_receiving)
@@ -115,7 +113,6 @@ ISR(PCINT0_vect)
 		/*First sampled bit will be the start bit*/
 		if (flag_firstPinChange && !(PINB & (1 << PINB0))) //Pin has to be low
 		{
-			//PORTB ^= (1 << PINB1);
 			flag_firstPinChange = false;
 			flag_vaildPinChange = true;
 		}
@@ -127,11 +124,11 @@ ISR(PCINT0_vect)
 //Still has to be checked whether the connection in between is lost
 ISR(TIMER3_COMPA_vect)
 {
-	PORTB |= (1 << PINB0);	
 	if(flag_receiving && flag_vaildPinChange)
 	{
 		if (PINB & (1 << PINB0))
 		{
+			PORTB |= (1 << PINB0);	
 			DDRB = 0xff;
 			flag_vaildPinChange = false;
 			flag_sending = true;
@@ -190,7 +187,7 @@ int main()
 	interruptDatabits = manen_result;
 	enable_pinChange(0);
 	init_timer1(1270, 1270 * 8, 1270 * 5);
-	init_timer3(1270 * 6, 635, 1905);	//1270/2=635, 635+1270=1905
+	init_timer3(1270 * 6, 635, 1905);
 	start_timer1_interrupt();
 	start_timer3_interrupt();
 	while(true)
